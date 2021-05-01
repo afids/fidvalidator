@@ -13,24 +13,28 @@ class Config(object):
     the AFIDs validator. Ideally, variables such as secret keys and such should
     be set by environment variable rather than explicitely here.
     """
-    CSRF_ENABLED = True
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "this-really-needs-to-be-changed"
+    SECRET_KEY = (
+        os.environ.get("SECRET_KEY") or "this-really-needs-to-be-changed"
+    )
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
 
 class ProductionConfig(Config):
     """Config used in production"""
+    CSRF_ENABLED = True # Security flag
     DEBUG = False
-    TESTING = False 
+    TESTING = False
 
 
 class DevelopmentConfig(Config):
     """Config used in development"""
+
     DEVELOPMENT = True
     DEBUG = True
 
 
 class TestingConfig(Config):
     """Config used for pytest"""
+
     DEBUG = True
     TESTING = True
