@@ -14,11 +14,13 @@ from visualizations import generate_3d_scatter, generate_histogram
 
 
 app = Flask(__name__)
-if os.environ.get('FLASK_ENV').lower() == "production":
+if os.environ.get("FLASK_ENV").lower() == "production":
     from config import ProductionConfig
+
     config_settings = ProductionConfig
-elif os.environ.get('FLASK_ENV').lower() == "testing":
+elif os.environ.get("FLASK_ENV").lower() == "testing":
     from config import TestingConfig
+
     config_settings = TestingConfig
 else:
     config_settings = DevelopmentConfig
