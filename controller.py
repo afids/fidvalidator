@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
+from config import DevelopmentConfig
 import numpy as np
 import wtforms as wtf
 
@@ -13,10 +14,16 @@ from visualizations import generate_3d_scatter, generate_histogram
 
 
 app = Flask(__name__)
+if os.environ.get('FLASK_ENV').lower() == "production":
+    from config import ProductionConfig
+    config_settings = ProductionConfig
+elif os.environ.get('FLASK_ENV').lower() == "testing":
+    from config import TestingConfig
+    config_settings = TestingConfig
+else:
+    config_settings = DevelopmentConfig
+app.config.from_object(config_settings)
 
-app.config.from_object(os.environ["APP_SETTINGS"])
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
