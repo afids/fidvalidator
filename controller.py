@@ -3,7 +3,7 @@
 import os
 from datetime import datetime, timezone
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import numpy as np
 import wtforms as wtf
@@ -182,7 +182,7 @@ class Average(wtf.Form):
 
 # Relative path of directory for uploaded files
 UPLOAD_DIR = "uploads/"
-AFIDS_HUMAN_DIR = "afids-templates/human/"
+AFIDS_DIR = "afids-templates"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
 app.secret_key = "MySecretKey"
@@ -235,13 +235,12 @@ def validator():
     labels = []
     template_afids = None
 
-    # Identify all human templates
-    human_templates = []
-    for human_dir in os.listdir(AFIDS_HUMAN_DIR):
-        if "tpl" in human_dir:
-            human_dir = human_dir[4:]
-        human_templates.append(human_dir.split("_")[0])
+    # Set all dropdown choices
+    form_choices = os.listdir(AFIDS_DIR)
+    form_choices = [choice.capitalize() for choice in form_choices]
+    form_choices.sort()
 
+    # Get time stamp
     timestamp = str(
         datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
     )
@@ -250,8 +249,8 @@ def validator():
         return render_template(
             "validator.html",
             form=form,
+            form_choices=form_choices,
             result=result,
-            human_templates=human_templates,
             template_afids=template_afids,
             index=[],
             labels=labels,
@@ -262,8 +261,8 @@ def validator():
         return render_template(
             "validator.html",
             form=form,
+            form_choices=form_choices,
             result=result,
-            human_templates=human_templates,
             template_afids=template_afids,
             index=[],
             labels=labels,
@@ -279,8 +278,8 @@ def validator():
         return render_template(
             "validator.html",
             form=form,
+            form_choices=form_choices,
             result=result,
-            human_templates=human_templates,
             template_afids=template_afids,
             index=[],
             labels=labels,
@@ -297,8 +296,8 @@ def validator():
         return render_template(
             "validator.html",
             form=form,
+            form_choices=form_choices,
             result=result,
-            human_templates=human_templates,
             template_afids=template_afids,
             index=[],
             labels=labels,
@@ -312,14 +311,16 @@ def validator():
             f"Invalid AFIDs set, please double check your file ({timestamp})"
         )
 
+    fid_species = request.form["fid_species"]
+    fid_species = fid_species.lower()
     fid_template = request.form["fid_template"]
 
     if fid_template == "Validate file structure":
         return render_template(
             "validator.html",
             form=form,
+            form_choices=form_choices,
             result=result,
-            human_templates=human_templates,
             template_afids=template_afids,
             index=[],
             labels=labels,
@@ -327,12 +328,10 @@ def validator():
         )
 
     result = f"{result}<br>{fid_template} selected"
-
     # Need to pull from correct folder when more templates are added
-    if fid_template in human_templates:
-        template_file_path = os.path.join(
-            AFIDS_HUMAN_DIR, f"tpl-{fid_template}_afids.fcsv"
-        )
+    template_file_path = (
+        f"{AFIDS_DIR}/{fid_species.lower()}/tpl-{fid_template}_afids.fcsv"
+    )
 
     with open(template_file_path, "r") as template_file:
         template_afids = csv_to_afids(template_file.read())
@@ -471,8 +470,8 @@ def validator():
     return render_template(
         "validator.html",
         form=form,
+        form_choices=form_choices,
         result=result,
-        human_templates=human_templates,
         template_afids=template_afids,
         index=list(range(template_afids.no_of_fiducials)),
         labels=labels,
@@ -481,6 +480,22 @@ def validator():
         scatter_html=generate_3d_scatter(template_afids, user_afids),
         histogram_html=generate_histogram(template_afids, user_afids),
     )
+
+
+@app.route("/validator/<species>")
+def get_templates(species):
+    """Get templates corresponding to specific species"""
+    # Alawys include a validate object
+    template_obj = {}
+    template_obj["name"] = "Validate file structure"
+    templates = [template_obj]
+    for species_templates in os.listdir(f"{AFIDS_DIR}/{species.lower()}"):
+        if "tpl" in species_templates:
+            template_obj = {}
+            template_obj["name"] = species_templates[4:].split("_")[0]
+            templates.append(template_obj)
+
+    return jsonify({"templates": templates})
 
 
 @app.route("/getall")
