@@ -1,5 +1,20 @@
 import unittest
 import model
+from model import HumanFiducialSet, db
+from controller import app
+from sqlalchemy import create_engine, MetaData
+
+
+class TestHumanFiducialSet(unittest.TestCase):
+    def test_empty_afids(self):
+        test_afids = model.HumanFiducialSet()
+        self.assertFalse(test_afids.validate())
+
+    def test_valid_afids(self):
+        test_afids = model.HumanFiducialSet()
+        for label, descs in model.EXPECTED_MAP.items():
+            test_afids.add_fiducial(descs[-1], ["0", "1", "2"])
+        self.assertTrue(test_afids.validate())
 
 
 class TestFcsvValidation(unittest.TestCase):
@@ -15,12 +30,10 @@ class TestFcsvValidation(unittest.TestCase):
         self.assertTrue(fcsv_afids.validate())
 
         self.assertEqual(
-            float(fcsv_afids.get_fiducial_position(1, "x")),
+            fcsv_afids.AC_x,
             -0.07077182344203692,
         )
-        self.assertEqual(
-            float(fcsv_afids.get_fiducial_position(1, "y")), 0.2548674381652525
-        )
+        self.assertEqual(fcsv_afids.AC_y, 0.2548674381652525)
 
     def test_valid_nhp(self):
         with open("test/resources/valid_nhp.fcsv", "r") as fcsv:
@@ -138,11 +151,11 @@ class TestJsonValidation(unittest.TestCase):
         self.assertTrue(json_afids.validate())
 
         self.assertEqual(
-            float(json_afids.get_fiducial_position(1, "x")),
+            json_afids.AC_x,
             0.07077182344203692,
         )
         self.assertEqual(
-            float(json_afids.get_fiducial_position(1, "y")),
+            json_afids.AC_y,
             -0.2548674381652525,
         )
 
@@ -225,6 +238,24 @@ class TestJsonValidation(unittest.TestCase):
                 model.json_to_afids(json_file.read())
 
         self.assertEqual(custom_message.exception.message, "Too few fiducials")
+
+
+class TestDBreadandwrite(unittest.TestCase):
+    db.create_all()
+
+    def test_session_add_read_and_validate(self):
+        test_afids = HumanFiducialSet()
+        for label, descs in model.EXPECTED_MAP.items():
+            test_afids.add_fiducial(descs[-1], ["0", "1", "2"])
+        self.assertTrue(test_afids.validate())
+        db.session.add(test_afids)
+        db.session.commit()
+
+        first_fid = db.session.query(HumanFiducialSet).first()
+        self.assertTrue(first_fid.AC.x == 0.0)
+        self.assertTrue(first_fid.AC.y == 1.0)
+        self.assertTrue(first_fid.AC.z == 2.0)
+        self.assertTrue(first_fid.validate())
 
 
 if __name__ == "__main__":
